@@ -1,0 +1,341 @@
+﻿using System;
+using System.Net;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
+using Tools;
+using System.Threading.Tasks;
+using System.Linq;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+namespace Router
+{
+
+   
+
+ 
+
+
+
+
+
+    public class NHFLERow
+    {
+        
+        public int port_in { get; set; }
+        public int label_in { get; set; }
+        public int port_out { get; set; }
+        public int label_out { get; set; }
+        public int StackPtr { get; set; }
+        public String method { get; set; }
+        public int next_id { get; set; }
+
+        public NHFLERow( int port_in, int label_in, int port_out, int label_out, int StackPtr, String method, int next_id)
+        {
+            
+            this.port_in = port_in;
+            this.label_in = label_in;
+            this.port_out = port_out;
+            this.label_out = label_out;
+            this.StackPtr = StackPtr;
+            this.method = method;
+            this.next_id = next_id;
+        }
+
+    }
+
+
+    public class NHFLETableModel
+    {
+        public List<NHFLEEntry> NHLFEEntries { set; get; }
+    }
+
+    public class NHFLEEntry
+    {
+
+        public int id { get; set; }
+        public int port_in { get; set; }
+        public int label_in { get; set; }
+        public int port_out { get; set; }
+        public int label_out { get; set; }
+        public int StackPtr { get; set; }
+        public String method { get; set; }
+        public int next_id { get; set; }
+    }
+
+
+
+    public class Router
+    {
+       
+
+
+        //public IPAddress IpAddress { get; set; }
+        //public int Port { get; set; }
+        public IPEndPoint EndPoint { get; set; }
+        public IPEndPoint CableCloudEndPoint { get; set; }
+        public IPEndPoint ManagementEndPoint { get; set; }
+        public String Name { get; set; }
+
+        public Boolean nhfletable_set = false;
+        
+        //public Dictionary<int, int> ComutationList { set; get; }
+        public Dictionary<int, NHFLERow> ComutationList { get; set; }
+
+        UdpClient udp;
+
+        public Router(String filename)
+        {
+            RouterConfigReader.LoadRouterConfig(this, filename);
+
+            Console.WriteLine($"ROUTER {Name}: {EndPoint.Address}:{EndPoint.Port}");
+            Console.Title = Name;
+            //Tworzymy listę przykładowych Labeli
+
+
+            udp = new UdpClient(EndPoint);
+
+            /*
+            ComutationList = new Dictionary<int, int>();
+            ComutationList.Add(30, 40);
+            ComutationList.Add(40, 50);
+            ComutationList.Add(50, 60);
+            */
+           
+
+            asyncStart();
+        }
+
+        
+
+
+        public void asyncStart()
+        {
+           
+
+
+
+
+
+            listener();
+
+            while(true)
+            {
+                ManagementMessage message = ManagementMessage.RoutingTableRequest(Name, EndPoint);
+
+
+                Package package2 = Package.ManagementMessage_(message);
+                byte[] messageBytes = package2.toBytes();
+                Logs.LogsSendRoutingTableRequest(message, Name);
+                udp.Send(messageBytes, messageBytes.Length, new IPEndPoint(IPAddress.Parse("127.0.0.2"), 4321));
+                //Console.WriteLine($"{message.getKey()}, {message.getMessage()}");
+                Thread.Sleep(5000);
+                if (nhfletable_set == true)
+                {
+                    break;
+                }
+            }
+
+            //Tutaj tylko zabezpieczamy projekt, żeby się nie zakneła konsola
+            while (true)
+            {
+               // Console.WriteLine("wpisz cos");
+                Console.ReadLine();
+            }
+        }
+
+        public void listener()
+        {
+            Task.Run(async () =>
+            {
+                using (var updClient = udp)
+                {
+                 /*   
+                    //Request for Routing tables sent to Management
+                    ManagementMessage message = ManagementMessage.RoutingTableRequest(Name, EndPoint);
+
+                    
+                    Package package2 = Package.ManagementMessage_(message);
+                    byte[] messageBytes = package2.toBytes();
+                    udp.Send(messageBytes, messageBytes.Length, new IPEndPoint(IPAddress.Parse("127.0.0.2"), 4321));
+                    Console.WriteLine($"{message.getKey()}, {message.getMessage()}");
+                    //--------------------------
+
+                    //Receive routing tables from Management
+                    var result2 = await updClient.ReceiveAsync();
+                    Package package3 = Package.fromBytes(result2.Buffer);
+                    ManagementAnswer answer = Package.ReceiveRoutingTables(package3);
+                    Console.WriteLine("1");
+                    setRoutingTables(answer);
+                    Console.WriteLine("2");
+
+
+
+                    Console.WriteLine(answer.showData());
+                    Console.WriteLine("3");
+                   // Console.WriteLine(System.Text.Encoding.UTF8.GetString(result2.Buffer));
+
+                    */
+
+                    while (true)
+                    {
+                        //Console.WriteLine("wchodze do listenera");
+
+                        var result = await updClient.ReceiveAsync();
+                        //Console.WriteLine("dostałem paczke");
+                        Package package = Package.fromBytes(result.Buffer);
+                        //Console.WriteLine("[READING PACKAGE]" + System.Text.Encoding.UTF8.GetString(result.Buffer));
+
+                        if(package.isRoutingCommunication() && nhfletable_set == false)
+                        {
+                            ManagementAnswer answer1 = Package.ReceiveRoutingTables(package);
+                            setRoutingTables(answer1);
+                            nhfletable_set = true;
+                            Logs.LogsReceiveRoutingTable(Name);
+                            //Console.WriteLine(answer1.showData());
+                            //Console.WriteLine("NO ELO DOSTALEM");
+                        }
+
+                        if (package.isMPLS())
+                        {
+                            if(nhfletable_set)
+                            {
+                                //MPLSPackage MPLSpackage = MPLSPackage.fromBytes(result.Buffer);
+                                MPLSPackage MPLSpackage = Package.ReceiveMPLSPackage(package);
+                                //Console.WriteLine($"[READING PACKAGE_MPLS] { MPLSpackage.ShowData() }");
+                                Logs.LogsRouterReceivePackage(MPLSpackage, Name);
+                                var InPort = MPLSpackage.GetPort();
+                                int label = MPLSpackage.GetLastLabel();
+                                int row_id = get_nhfle_row_id(InPort, label);
+                                if (row_id > -1)
+                                {
+                                    switch (ComutationList[row_id].method)
+                                    {
+                                        case "swap":
+                                           // Console.WriteLine("Router: wykonuje swap");
+                                          //  Console.WriteLine("Label przed swap: " + MPLSpackage.ShowAllLabels());
+                                            MPLSpackage.swap(ComutationList[row_id].label_out, ComutationList[row_id].port_out);
+                                          //  Console.WriteLine("Label po swap: " + MPLSpackage.ShowAllLabels());
+                                            break;
+                                        case "push":
+                                           // Console.WriteLine("Router: wykonuje push");
+                                          //  Console.WriteLine("Label przed push: " + MPLSpackage.ShowAllLabels());
+                                            push(ComutationList[row_id], MPLSpackage);
+                                          //  Console.WriteLine("Label po push: " + MPLSpackage.ShowAllLabels());
+                                            break;
+                                        case "pop":
+                                            //Console.WriteLine("Router: wykonuje pop");
+                                           // Console.WriteLine("Label przed pop: " + MPLSpackage.ShowAllLabels());
+                                            pop(ComutationList[row_id], MPLSpackage);
+                                           // Console.WriteLine("Label po pop: " + MPLSpackage.ShowAllLabels());
+                                            break;
+                                    }
+                                }
+
+                                Package package1 = Package.MPLSPackage_(MPLSpackage);
+                                //Console.WriteLine("Package show data: " + package1.ToString());
+                                //Console.WriteLine("[Sending PACKAGE]" + System.Text.Encoding.UTF8.GetString(package1.toBytes()));
+                                Logs.LogsRouterSendPackage(MPLSpackage, Name);
+                                udp.Send(package1.toBytes(), package1.toBytes().Length, CableCloudEndPoint);
+                                Thread.Sleep(1000);
+                            }
+                            
+                        }
+                        else if (package.isTerminateOrder())
+                        {
+                            Environment.Exit(0);
+                        }
+                        //package.SwapLabel(ComutationList[package.GetLastLabel()]);
+                    }
+                }
+            });
+        }
+
+
+        private void setRoutingTables(ManagementAnswer answer)
+        {
+            
+            String jsonFile = answer.answer;
+           // Console.WriteLine("10");
+          //  Console.WriteLine(jsonFile);
+           // Console.WriteLine("11");
+            NHFLETableModel TableModel = JsonSerializer.Deserialize<NHFLETableModel>(jsonFile);
+          //  Console.WriteLine("12");
+            this.ComutationList = new Dictionary<int, NHFLERow>();
+            
+            
+            //  foreach (AvailableHost element in hostModel.HostList)
+            try
+            {
+             //   Console.WriteLine("13" + TableModel.NHLFEEntries.Count());
+                foreach (NHFLEEntry element in TableModel.NHLFEEntries)
+                {
+                  //  Console.WriteLine("in for");
+                 //   Console.WriteLine($" {element.port_in}, {element.label_in}, {element.port_out}, {element.label_out}, {element.method}, {element.next_id}, ");
+                    this.ComutationList.Add(element.id, new NHFLERow(element.port_in, element.label_in, element.port_out, element.label_out, element.StackPtr, element.method, element.next_id));
+                
+                //this.ComutationList.Add(int.Parse(element.id), new NHFLERow( int.Parse(element.port_in), int.Parse(element.label_in), int.Parse(element.port_out), int.Parse(element.label_out), int.Parse(element.StackPtr), element.method, int.Parse(element.next_id)));
+            }
+            }
+            catch (Exception e)
+            { Console.WriteLine(e); }
+        }
+
+        //jesli nie znajdzie odpowiedniego rekordu to zwraca wartosc -1
+        private int get_nhfle_row_id(int port, int label)
+        {
+            foreach (KeyValuePair<int, NHFLERow> item in ComutationList)
+            {
+                if (item.Value.label_in == label && item.Value.port_in == port)
+                {
+                    return item.Key;
+                }
+            }
+            return -1;
+        }
+
+        public void push(NHFLERow entry, MPLSPackage MPLSpackage)
+        {
+          //  Console.WriteLine("elo");
+            
+            MPLSpackage.swap(entry.label_out, entry.port_out);
+            MPLSpackage.ChangeLabel("push");
+            NHFLERow nextentry = ComutationList[entry.next_id];
+            if (nextentry.method == "swap")
+            {
+                MPLSpackage.swap(nextentry.label_out, nextentry.port_out);
+                return;
+            }
+            while (nextentry.method != "swap")
+            {
+                MPLSpackage.swap(nextentry.label_out, nextentry.port_out);
+                MPLSpackage.ChangeLabel("push");
+                nextentry = ComutationList[nextentry.next_id];
+                
+            }
+            MPLSpackage.swap(nextentry.label_out, nextentry.port_out);
+        }
+
+        public void pop(NHFLERow entry, MPLSPackage MPLSpackage)
+        {
+         //   Console.WriteLine("elo");
+            
+            MPLSpackage.ChangeLabel("pop");
+            NHFLERow nextentry = ComutationList[entry.next_id];
+            if (nextentry.method == "swap")
+            {
+                MPLSpackage.swap(nextentry.label_out, nextentry.port_out);
+                return;
+            }
+            while (nextentry.method != "swap")
+            {
+                MPLSpackage.ChangeLabel("pop");
+                nextentry = ComutationList[nextentry.next_id];
+
+            }
+            MPLSpackage.swap(nextentry.label_out, nextentry.port_out);
+        }
+
+    }
+}

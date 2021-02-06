@@ -1,0 +1,164 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading.Tasks;
+using Tools;
+namespace ManagementSystem
+{
+    public class ManagementSystem
+    {
+       public IPEndPoint ManagementSystemPoint { get; set; }
+        public String Name { get; set; }
+        public Dictionary <String, String> DevicesList { get; set; }
+
+        public Dictionary<String, IPEndPoint> AllDevicesList { get; set; }
+
+        UdpClient udp;
+
+        public ManagementSystem(String filename)
+        {
+            ManagementSystemConfigReader.LoadManagementSystemConfig(this, filename);
+            //Console.Title = "Management System";
+            Console.WriteLine($"Management System: {ManagementSystemPoint.Address}:{ManagementSystemPoint.Port}");
+
+            AsyncStart();
+        }
+
+        public void AsyncStart()
+        {
+            udp = new UdpClient(ManagementSystemPoint);
+
+            Listener();
+
+            while(true)
+            {
+                String close = Console.ReadLine();
+                if (close == "EXIT")
+                {
+                    foreach(KeyValuePair<String, IPEndPoint> device in AllDevicesList)
+                    {
+                        Package package = Package.SendTerminateOrder();
+                        byte[] bytes = package.toBytes();
+                        udp.Send(bytes, bytes.Length, device.Value);
+                    }
+                    Environment.Exit(0);
+                    break;
+                }
+            }
+
+
+            while (true)
+            {
+                Console.ReadLine();
+            }
+        }
+
+        public void Listener()
+        {
+            
+            Task.Run(async () =>
+            {
+                using var updClient = udp;
+                while (true)
+                {
+                    //Waiting for HELLO from NetworkNowe
+                    //Console.WriteLine("Oczekuje na wiadomosc");
+                    var result = await updClient.ReceiveAsync();
+                    //Console.WriteLine("Otzrymałem wiadomosc");
+                    try
+                    {
+                        //Convert udpReceive to ManagementMessage
+                        //ManagementMessage managementMessage = ManagementMessage.fromBytes(result.Buffer);
+                        //Console.WriteLine(managementMessage.getKey() + " " + managementMessage.getNodeName() );
+
+                        //Create ManagementAnswer based on ManagementMessage
+                        byte[] resultBytes = result.Buffer;
+                        Package package = Package.fromBytes(resultBytes);
+                        if (package.isManagementMessage())
+                        {
+                            //Console.WriteLine("it is management message!");
+                            ManagementMessage message = Package.ReceiveManagementMessage(package);
+                          
+                            /*if (message.isLabelRequest())
+                            {
+                                Console.WriteLine("it is message to Host!");
+                                int label = getValueLabel(message);
+                                ManagementAnswer answer = ManagementAnswer.HostAnswer(label);
+                                byte[] package1 = Package.Label(answer).toBytes();
+                                Console.WriteLine($"Sending message {message.toString()}");
+                                udp.Send(package1, package1.Length, message.getRequesterEndPoint());
+                            }
+                            else if (message.isCloseTunelRequest())
+                            {
+                                var tunelToClose = int.Parse(message.getMessage());
+
+                                //TODO set selected label as avaliable
+
+                                ManagementAnswer answer = ManagementAnswer.TunelCloseAccept(tunelToClose);
+                                byte[] package1 = Package.TunelCloseAcceptation(answer).toBytes();
+                                udp.Send(package1, package1.Length, message.getRequesterEndPoint());
+                            }*/
+
+                            if(message.isRoutingTableRequest())
+                            {
+                                //Console.WriteLine("isRoutingTable");
+                                Logs.LogsReceiveRoutingTableRequest(message);
+                                String routeTable = gtJSONAnswer(message);
+                                //Console.WriteLine(routeTable);
+                                ManagementAnswer answer = ManagementAnswer.RouterAnswer(routeTable);
+                                //Console.WriteLine(answer.showData());
+                                byte[] package1 = Package.RoutingTables(answer).toBytes();
+                                //Console.WriteLine(package1.GetType());
+                                //Console.WriteLine(message.getRequesterEndPoint());
+                                Logs.LogsSendRoutingTable(message);
+                                udp.Send(package1, package1.Length, message.getRequesterEndPoint());
+                            }
+
+                            }
+                       
+                    
+                       // ManagementAnswer answer = gtJSONAnswer(managementMessage);
+                       // byte[] answerBytes = answer.toBytes();
+
+                       // Console.WriteLine(answer);
+
+                        //Send ManagementAnswer
+                       // udp.Send(answerBytes, answerBytes.Length, managementMessage.getRequesterEndPoint());
+                    }
+                    catch(Exception e)
+                    {
+                        Logs.LogsManagementException(e);
+                    }
+                    
+                }
+            });
+        }
+        public String gtJSONAnswer(ManagementMessage message)
+        {
+
+            var jsonFile = File.ReadAllText(DevicesList[message.getMessage()]);
+            //Logs.LogsManagementgtJSONAnswer(jsonFile);
+           // System.Console.WriteLine(jsonFile);
+
+            return jsonFile;
+
+        }
+       
+        public int getValueLabel(ManagementMessage mess)
+        {
+            //String label;
+            //TODO
+            if (true)
+            {
+                return 1;
+            }
+
+        }
+
+    }
+}

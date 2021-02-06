@@ -1,0 +1,224 @@
+﻿using System;
+using System.Net;
+using System.Collections.Generic;
+using Tools;
+using System.Threading.Tasks;
+using System.Net.Sockets;
+
+namespace Host
+{
+    public class Host
+    {
+        public IPEndPoint EndPoint { get; set; }
+        public String HostName { get; set; }
+        public IPEndPoint CloudEndPoint { set; get; }
+        public Dictionary<String, IPEndPoint> HostsList { set; get; }
+
+        //public IPEndPoint ManagementEndPoint { set; get; }
+        //private String selectedHost;
+        //private String userData;
+
+        UdpClient udp;
+
+        
+        public Host(String filename)
+        {
+            try
+            {
+                HostConfigReader.LoadHostConfig(this, filename);
+                Console.WriteLine($"HOST {HostName}: {EndPoint.Address}:{EndPoint.Port}");
+
+                udp = new UdpClient(EndPoint);
+
+                StartSocket();
+            }
+
+            catch(Exception e)
+            {
+                Console.WriteLine("[HOST CONSTRUCTOR ERROR]");
+                Console.WriteLine(e);
+            }
+        }
+
+
+        public void StartSocket()
+        {
+            Listener();
+
+            while (true)
+            {
+                // String choice = HostValidationOptions.menuSelect();
+                // switch(choice)
+                //  {
+                //     case "1":
+                //         LabelRequest();
+                //         break;
+                //      case "2":
+                //            CloseTunelRequest();
+                //            break;
+                //         case "3":
+                //             ShowOpenedTunnles();
+                //             break;
+                //       }
+                String userData = HostValidationOptions.UserMessage();
+                String selectedHost = HostValidationOptions.SelectHost(HostsList);
+                int label = HostValidationOptions.labelSelect();
+
+                MPLSPackage mpls = new MPLSPackage(EndPoint, HostsList[selectedHost], userData, EndPoint.Port, label);
+                Package mplsSendingPackage = Package.MPLSPackage_(mpls);
+                byte[] mplsSendingPackageByte = mplsSendingPackage.toBytes();
+                Logs.LogsHostSendPackage(mpls, selectedHost, HostName);
+                udp.Send(mplsSendingPackageByte, mplsSendingPackageByte.Length, CloudEndPoint);
+
+
+            }
+        }
+
+
+        /// <summary>
+        /// Async Task listening by UDPClinet for any sended packages.
+        /// If something came to Host, is converted to Package class
+        /// and then checked if message is meant for Host.
+        /// If is meant for Host, proceed package.
+        /// </summary>
+        public void Listener()
+        {
+            Task.Run(async () =>
+            {
+                //using var updClient = udp;
+                while (true)
+                {
+                    //Console.WriteLine("[INFO]> waiting for message");
+                    var result = await udp.ReceiveAsync();
+                    //Console.WriteLine("[INFO]> message received");
+                    byte[] resultBytes = result.Buffer;
+
+                    Package package = Package.fromBytes(resultBytes);
+                    
+                    if(package.isMPLS())
+                    {
+                        MPLSPackage mpls = Package.ReceiveMPLSPackage(package);
+                        //Console.WriteLine("[RECEIVED PACKAGE]> " + mpls.ShowData());
+                        Logs.LogsHostReceivePackage(mpls, HostName);
+                    }
+
+                    else if(package.isTerminateOrder())
+                    {
+                        Environment.Exit(0);
+                    }
+
+                    /*
+                    if (package.isLabelCommunication())
+                    {
+                        Console.WriteLine("[INFO]> Label is avaliable");
+                        ManagementAnswer Answer = Package.ReceiveLabel(package);
+
+                        if(Answer.isLabelAvaliable())
+                        {
+                            Console.WriteLine("[INFO]> TUNNEL OPENED");
+                            Console.WriteLine("[RECEIVED PACKAGE]> " + package.toString());
+                            Console.WriteLine("Selected Host: " + selectedHost+ "answer: " + Answer.answer);
+                            TunelDic.Add(int.Parse(Answer.answer), selectedHost);
+
+                            MPLSPackage mpls = new MPLSPackage(EndPoint, HostsList[selectedHost], userData, EndPoint.Port, 11);
+                            Package mplsSendingPackage = Package.MPLSPackage_(mpls);
+                            byte[] mplsSendingPackageByte = mplsSendingPackage.toBytes();
+                            Console.WriteLine("[SENDING PACKAGE]> " + mpls.ShowData());
+                            udp.Send(mplsSendingPackageByte, mplsSendingPackageByte.Length, CloudEndPoint);
+                        }
+                        else
+                        {
+                            Console.WriteLine("[INFO]> NO MORE TUNNELS");
+                        }
+
+                    }
+                    else if(package.isMPLS())
+                    {
+                        MPLSPackage mpls = Package.ReceiveMPLSPackage(package);
+                        Console.WriteLine("[RECEIVED PACKAGE]> " + mpls.ShowData());
+                    }
+
+                    else if(package.isTunelCloseAcceptation())
+                    {
+                        Console.WriteLine("[INFO]> TUNNEL CLOSING REQUEST ACCEPTED");
+                        Console.WriteLine("[RECEIVED PACKAGE]> " + package.toString());
+
+                        ManagementAnswer answer = Package.ReceiveTunelCloseAcceptation(package);
+
+                        TunelDic.Remove(int.Parse(answer.answer));
+
+                        Console.WriteLine($"[INFO]> TUNNEL {answer.answer} CLOSED");
+
+                    }
+                    */
+                }
+            });
+        }
+
+
+        /*
+/// <summary>
+/// Creates message to ManagementSystem to ask if new tunel to selected Host is avaliable
+/// </summary>
+public void LabelRequest()
+{
+    userData = HostValidationOptions.UserMessage();
+    selectedHost = HostValidationOptions.SelectHost(HostsList);
+    Console.WriteLine("SelectedHost: " + selectedHost);
+
+    ManagementMessage message = ManagementMessage.LabelRequest(selectedHost, EndPoint);
+
+    Package package = Package.ManagementMessage_(message);
+    byte[] messageBytes = package.toBytes();
+    Console.WriteLine($"[SENDING LABEL REQUEST] {package.toString()}");
+    udp.Send(messageBytes, messageBytes.Length, ManagementEndPoint);
+
+} */
+
+        /*public void CloseTunelRequest()
+        {
+            try
+            {
+                if (TunelDic.Count != 0)
+                {
+                    int selectedTunel = HostValidationOptions.TunelToClose(TunelDic);
+
+                    ManagementMessage message = ManagementMessage.CloseTunelRequest(selectedTunel, EndPoint);
+
+                    Package package = Package.ManagementMessage_(message);
+                    byte[] messageBytes = package.toBytes();
+                    Console.WriteLine($"[RQUEST TUNEL CLOSE] {package.toString()}");
+                    udp.Send(messageBytes, messageBytes.Length, ManagementEndPoint);
+                }
+                else
+                {
+                    Console.WriteLine("[WARNING] NO TUNEL TO CLOSE");
+                }
+            }
+            catch
+            {
+                Console.WriteLine("[WARNING] NO TUNEL TO CLOSE");
+            }
+        }
+
+        public void ShowOpenedTunnles()
+        {
+            try
+            {
+                if (TunelDic.Count != 0)
+                {
+                    HostValidationOptions.ShowOpenedTunnles_(TunelDic);
+                }
+                else
+                {
+                    Console.WriteLine("[INFO] No tunnles opened yet");
+                }
+            }
+            catch
+            {
+                Console.WriteLine("[INFO] No tunnles opened yet");
+            }
+        }
+        */
+    }
+}

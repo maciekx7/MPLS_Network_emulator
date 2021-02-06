@@ -1,0 +1,30 @@
+﻿{
+    "HostName": "H2",
+    "IpAddress": "127.0.0.12",
+    "Port": 10112,
+    "CloudIP": "127.0.0.1",
+    "CloudPort": 10001,
+    "ManagementIP": "127.0.0.2",
+    "ManagementPort": 4321,
+    "HostList": [
+        {
+            "HostName": "H1",
+            "IpAddress": "127.0.0.11",
+            "Port": 10111
+        },
+        {
+            "HostName": "H3",
+            "IpAddress": "127.0.0.13",
+            "Port": 10113
+        },
+        {
+            "HostName": "H4",
+            "IpAddress": "127.0.0.14",
+            "Port": 10114
+
+        }
+    ]
+
+}
+
+

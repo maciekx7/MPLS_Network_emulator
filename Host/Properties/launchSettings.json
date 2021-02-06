@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Host": {
+      "commandName": "Project",
+      "remoteDebugEnabled": false,
+      "nativeDebugging": false
+    }
+  }
+}

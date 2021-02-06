@@ -1,0 +1,196 @@
+﻿{
+    "IpAddress": "127.0.0.1",
+    "Port": 10001,
+    "cableList": [
+        {
+        "PortIn": 10111,
+        "NodeOutName": "R1",
+        "Port2Out": 20301,
+        "Capacity": 10
+        },
+        {
+        "PortIn": 20301,
+        "NodeOutName": "H1",
+        "Port2Out": 10111,
+        "Capacity": 10
+        },
+        {
+        "PortIn": 10112,
+        "NodeOutName": "R1",
+        "Port2Out": 20302,
+        "Capacity": 8
+        },        
+        {
+        "PortIn": 20302,
+        "NodeOutName": "H2",
+        "Port2Out": 10112,
+        "Capacity": 8
+        },
+        {
+        "PortIn": 30301,
+        "NodeOutName": "R1",
+        "Port2Out": 20303,
+        "Capacity": 9
+        },    
+        {
+        "PortIn": 20303,
+        "NodeOutName": "R2",
+        "Port2Out": 30301,
+        "Capacity": 9
+        },        
+        {
+        "PortIn": 20304,
+        "NodeOutName": "R3",
+        "Port2Out": 40302,
+        "Capacity": 10
+        },        
+        {
+        "PortIn": 40302,
+        "NodeOutName": "R1",
+        "Port2Out": 20304,
+        "Capacity": 10
+        },        
+        {
+        "PortIn": 20305,
+        "NodeOutName": "R4",
+        "Port2Out": 50301,
+        "Capacity": 8
+        },        
+        {
+        "PortIn": 50301,
+        "NodeOutName": "R1",
+        "Port2Out": 20305,
+        "Capacity": 8
+        },
+        {
+        "PortIn": 30302,
+        "NodeOutName": "R3",
+        "Port2Out": 40301,
+        "Capacity": 6
+        },        
+        {
+        "PortIn": 40301,
+        "NodeOutName": "R2",
+        "Port2Out": 30302,
+        "Capacity": 6
+        },              
+        {
+        "PortIn": 40303,
+        "NodeOutName": "H3",
+        "Port2Out": 10113,
+        "Capacity": 11
+        },        
+        {
+        "PortIn": 10113,
+        "NodeOutName": "R3",
+        "Port2Out": 40303,
+        "Capacity": 11
+        },        
+        {
+        "PortIn": 40304,
+        "NodeOutName": "R5",
+        "Port2Out": 60301,
+        "Capacity": 14
+        },
+        {
+        "PortIn": 60301,
+        "NodeOutName": "R3",
+        "Port2Out": 40304,
+        "Capacity": 14
+        },        
+        {
+        "PortIn": 60302,
+        "NodeOutName": "R4",
+        "Port2Out": 50302,
+        "Capacity": 6
+        },        
+        {
+        "PortIn": 50302,
+        "NodeOutName": "R5",
+        "Port2Out": 60302,
+        "Capacity": 6
+        },        
+        {
+        "PortIn": 50303,
+        "NodeOutName": "R6",
+        "Port2Out": 70301,
+        "Capacity": 8
+        },        
+        {
+        "PortIn": 70301,
+        "NodeOutName": "R4",
+        "Port2Out": 50303,
+        "Capacity": 8
+        },
+        {
+        "PortIn": 70302,
+        "NodeOutName": "H4",
+        "Port2Out": 10114,
+        "Capacity": 7
+        },        
+        {
+        "PortIn": 10114,
+        "NodeOutName": "R6",
+        "Port2Out": 70302,
+        "Capacity": 7
+        }
+
+        
+        
+        
+    ],
+
+    "ipList": [
+        {
+        "NodeName": "H1",
+        "IpAddress": "127.0.0.11",
+        "Port": 10111
+        },
+        {
+        "NodeName": "H2",
+        "IpAddress": "127.0.0.12",
+        "Port": 10112
+        },
+        {
+        "NodeName": "H3",
+        "IpAddress": "127.0.0.13",
+        "Port": 10113
+        },
+        {
+        "NodeName": "H4",
+        "IpAddress": "127.0.0.14",
+        "Port": 10114
+        },
+        {
+        "NodeName": "R1",
+        "IpAddress": "127.0.0.21",
+        "Port": 20111
+        },
+        {
+        "NodeName": "R2",
+        "IpAddress": "127.0.0.22",
+        "Port": 20112
+        },
+        {
+        "NodeName": "R3",
+        "IpAddress": "127.0.0.23",
+        "Port": 20113
+        },
+        {
+        "NodeName": "R4",
+        "IpAddress": "127.0.0.24",
+        "Port": 20114
+        },
+        {
+        "NodeName": "R5",
+        "IpAddress": "127.0.0.25",
+        "Port": 20115
+        },
+        {
+        "NodeName": "R6",
+        "IpAddress": "127.0.0.26",
+        "Port": 20116
+        }
+    
+    ]
+}

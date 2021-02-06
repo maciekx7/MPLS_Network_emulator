@@ -1,0 +1,9 @@
+﻿{
+    "Name": "R4",
+    "IpAddress": "127.0.0.24",
+    "Port": 20114,
+    "CloudIP": "127.0.0.1",
+    "CloudPort": 10001,
+    "ManagementIP": "127.0.0.2",
+    "ManagementPort": 4321
+}
